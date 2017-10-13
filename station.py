@@ -43,7 +43,7 @@ def main():
         tracks = api.get_station_tracks(target)
 
         i = 0
-        while True:
+        while i < len(tracks):
             try:
                 track_id = tracks[i]['storeId']
             except KeyError:
