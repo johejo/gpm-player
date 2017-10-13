@@ -1,0 +1,4 @@
+gmusicapi>=10.1.2
+requests>=2.18.4
+inputimeout>=0.1.0
+python-vlc>=2.2.6
