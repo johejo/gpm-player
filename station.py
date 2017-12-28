@@ -72,9 +72,10 @@ def select_station(api):
         n = input('\nSelect station. (Input number.)\n>>')
         if n == 'q':
             exit()
-        selected = int(n)
-        if 0 <= selected <= len(stations):
-            break
+        if n.isdigit():
+            selected = int(n)
+            if 0 <= selected <= len(stations):
+                break
 
     return stations, selected
 
