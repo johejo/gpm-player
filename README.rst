@@ -44,7 +44,7 @@ Usage
 
 .. code:: bash
 
-    $ gpm-player
+    $ gpm-station
 
 Future help
 

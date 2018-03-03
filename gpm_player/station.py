@@ -4,8 +4,8 @@ import tempfile
 import warnings
 import argparse
 import getpass
+import urllib.request
 
-import requests
 import vlc
 from gmusicapi import Mobileclient
 from inputimeout import inputimeout, TimeoutOccurred
@@ -177,7 +177,7 @@ class StationPlayer(object):
         url = self.api.get_stream_url(track_id)
 
         tmp = tempfile.NamedTemporaryFile(delete=False)
-        tmp.write(requests.get(url).content)
+        tmp.write(urllib.request.urlopen(url).read())
 
         self.vlc_media_player.set_mrl(tmp.name)
         self.vlc_media_player.play()

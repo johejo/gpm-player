@@ -1,4 +1,3 @@
 gmusicapi>=11.0.0
-requests>=2.18.4
 inputimeout>=1.0.4
 python-vlc>=3.0.102
