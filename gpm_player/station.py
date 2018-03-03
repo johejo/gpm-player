@@ -136,7 +136,7 @@ class StationPlayer(object):
             tracks = self.api.get_station_tracks(target)
 
             i = 0
-            while i < len(tracks):
+            while True:
                 try:
                     track_id = tracks[i]['storeId']
                 except KeyError:
@@ -147,9 +147,12 @@ class StationPlayer(object):
 
                 if cmd == 'f':
                     i += 1
+                    if i >= len(tracks):
+                        i = 0
                 elif cmd == 'b':
                     i -= 1
-                    i = max(0, i)
+                    if i < 0:
+                        i = len(tracks) - 1
                 elif cmd == 's':
                     break
                 elif is_quit(cmd):
@@ -164,7 +167,7 @@ class StationPlayer(object):
         print('{}: {}'.format(len(self.stations), 'I`m Feeling Lucky'))
 
         while True:
-            cmd = input('Select Station (Input Number)\n>>')
+            cmd = input('\nSelect Station (Input Number)\n>>')
             if is_quit(cmd) or is_digit(cmd, len(self.stations)):
                 return cmd
 
@@ -206,12 +209,10 @@ class StationPlayer(object):
             if is_quit(cmd) or is_next(cmd):
                 self.vlc_media_player.stop()
                 tmp.close()
-                break
+                return cmd
             elif cmd == 'p':
                 paused = not paused
                 self.vlc_media_player.pause()
-
-        return cmd
 
 
 def set_args():
