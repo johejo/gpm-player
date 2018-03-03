@@ -1,0 +1,15 @@
+language: python
+
+python:
+  - "3.5"
+  - "3.6"
+  - "3.7-dev"
+
+cache: pip
+
+install:
+  - "pip install flake8 wheel"
+
+script:
+  - "flake8 --ignore=F401 gpm_player"
+  - "python setup.py bdist_wheel"
