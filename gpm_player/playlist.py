@@ -6,33 +6,27 @@ from .exceptions import PlayerExitException
 from .common import BasePlayer, is_digit, is_quit
 
 
-class StationPlayer(BasePlayer):
+class PlayListPlayer(BasePlayer):
     def __init__(self, *, email=None, password=None, interval=3, width=50):
         super().__init__(email=email, password=password, interval=interval,
                          width=width)
 
     def get_tracks(self):
         self.prepare()
-        stations = self.api.get_all_stations()
+        playlists = self.api.get_all_user_playlist_contents()
 
-        for i, station in enumerate(stations):
-            print('{}: {}'.format(i, station['name']))
-
-        print('{}: {}'.format(len(stations), 'I`m Feeling Lucky'))
+        for i, playlist in enumerate(playlists):
+            print('{}: {}'.format(i, playlist['name']))
 
         while True:
-            cmd = input('\nSelect Station (Input Number)\n>>')
+            cmd = input('\nSelect PlayList (Input Number)\n>>')
             if is_quit(cmd):
                 raise PlayerExitException
-            elif is_digit(cmd, len(stations)):
+            elif is_digit(cmd, len(playlists) - 1):
                 n = int(cmd)
-                if n == len(stations):
-                    station_id = 'IFL'
-                else:
-                    station_id = stations[n]['id']
+                tracks = playlists[n]['tracks']
                 break
 
-        tracks = self.api.get_station_tracks(station_id)
         return tracks
 
 
@@ -57,6 +51,6 @@ def main():
     except KeyboardInterrupt:
         return
 
-    player = StationPlayer(email=email, password=password,
-                           interval=arg.interval, width=arg.width)
+    player = PlayListPlayer(email=email, password=password,
+                            interval=arg.interval, width=arg.width)
     player.start()

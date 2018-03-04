@@ -106,3 +106,4 @@ venv.bak/
 # original
 *.mp3*
 .idea/
+debug

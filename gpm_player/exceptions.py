@@ -9,3 +9,7 @@ class StationPlayerError(BasePlayerException):
 class LoginFailure(StationPlayerError):
     def __str__(self):
         return 'Credentials weren\'t accepted.'
+
+
+class PlayerExitException(BasePlayerException):
+    pass
