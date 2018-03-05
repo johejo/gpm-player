@@ -1,19 +1,15 @@
-import argparse
-import getpass
-
-from .__version__ import __version__
 from .exceptions import PlayerExitException
-from .common import BasePlayer, is_digit, is_quit
+from .common import BasePlayer, is_digit, is_quit, run
 
 
 class StationPlayer(BasePlayer):
-    def __init__(self, *, email=None, password=None, interval=3, width=50):
-        super().__init__(email=email, password=password, interval=interval,
-                         width=width)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def get_tracks(self):
         self.prepare()
         stations = self.api.get_all_stations()
+        print()
 
         for i, station in enumerate(stations):
             print('{}: {}'.format(i, station['name']))
@@ -36,27 +32,5 @@ class StationPlayer(BasePlayer):
         return tracks
 
 
-def set_args():
-    p = argparse.ArgumentParser()
-    p.add_argument('-v', '--version', action='version', version=__version__,
-                   help='show version and exit')
-    p.add_argument('-i', '--interval', nargs='?', default=3, type=float,
-                   help='screen display update interval')
-    p.add_argument('-w', '--width', nargs='?', default=50, type=int,
-                   help='progress bar width')
-    a = p.parse_args()
-    return a
-
-
 def main():
-    arg = set_args()
-
-    try:
-        email = input('Email: ')
-        password = getpass.getpass()
-    except KeyboardInterrupt:
-        return
-
-    player = StationPlayer(email=email, password=password,
-                           interval=arg.interval, width=arg.width)
-    player.start()
+    run(StationPlayer)

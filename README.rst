@@ -42,20 +42,23 @@ Install
 Usage
 -----
 
+station player
+~~~~~~~~~~~~~~
+
 .. code:: bash
 
     $ gpm-station
 
-Future help
+playlist player
+~~~~~~~~~~~~~~~
 
 .. code:: bash
 
-    $ gpm-station --help
+    $ gpm-playlist
 
 Tasks
 -----
 
-- playlist player
 - equalizer
 - seek and set time
 

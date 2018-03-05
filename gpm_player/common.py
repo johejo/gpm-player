@@ -1,19 +1,59 @@
 import platform
+import argparse
 import subprocess
 import tempfile
 import warnings
+import getpass
 import urllib.request
 
 import vlc
 from gmusicapi import Mobileclient, CallFailure
 from inputimeout import inputimeout, TimeoutOccurred
 
-from .exceptions import LoginFailure, PlayerExitException
+from .exceptions import LoginFailure, PlayerExitException, StoredTrackError
+from .__version__ import __version__
 
 if platform.system() == 'Windows':
     CLEAR_SCREEN = 'cls'
 else:
     CLEAR_SCREEN = 'clear'
+
+
+def input_login_info():
+    email = input('Email: ')
+    password = getpass.getpass()
+    return email, password
+
+
+def set_args():
+    p = argparse.ArgumentParser()
+    p.add_argument('-v', '--version', action='version', version=__version__,
+                   help='show version and exit')
+    p.add_argument('-i', '--interval', nargs='?', default=3, type=float,
+                   help='screen display update interval')
+    p.add_argument('-w', '--width', nargs='?', default=50, type=int,
+                   help='progress bar width')
+    a = p.parse_args()
+    return a
+
+
+def run(player):
+    arg = set_args()
+
+    while True:
+        try:
+            email, password = input_login_info()
+        except KeyboardInterrupt:
+            return
+
+        try:
+            p = player(email=email, password=password,
+                       interval=arg.interval, width=arg.width)
+            p.start()
+        except LoginFailure:
+            continue
+        else:
+            return
 
 
 def clear_screen():
@@ -35,18 +75,18 @@ def print_track_info(info):
 def print_command_list():
     print('Command List\n'
           '\'q\': stop and quit\n'
-          '\'p\': pause or play\n'
+          '\'p\': pause or run\n'
           '\'f\': go to next track\n'
           '\'b\': back to previous track\n'
           '\'r\': restart current track\n'
-          '\'s\': back to station menu\n')
+          '\'s\': back to selection menu\n')
 
 
 def print_bar(current, duration, remain, width=50):
     per = current / duration * 100
     bar = '█' * int(width * per / 100)
 
-    print('Remaining play time: {} [s]'.format(remain))
+    print('Remaining run time: {} [s]'.format(remain))
     print(' {}% |{}| {}/{} {}\n'
           .format(round(per, 2), bar.ljust(width),
                   round(current / 1000, 2), duration / 1000, '[s]'))
@@ -75,12 +115,18 @@ def is_digit(cmd, length):
 
 def choose_track_id(track):
     try:
-        track_id = track['trackId']
+        track_id = track['storeId']
     except KeyError:
         try:
-            track_id = track['storeId']
-        except KeyError:
             track_id = track['nid']
+        except KeyError:
+            try:
+                track_id = track['trackId']
+            except KeyError:
+                raise KeyError
+
+    if not track_id.startswith('T'):
+        raise StoredTrackError
 
     return track_id
 
@@ -111,12 +157,10 @@ class BasePlayer(object):
             self.api.logout()
 
     def prepare(self):
-        if not self._logged_in:
-            msg = 'Login is not completed.'
-            warnings.warn(msg)
-
-        if not self.api.is_authenticated():
+        if (not self._logged_in) or (not self.api.is_authenticated()):
             raise LoginFailure
+        else:
+            return True
 
     def start(self):
         try:
@@ -137,34 +181,45 @@ class BasePlayer(object):
         while True:
             tracks = self.get_tracks()
             i = 0
+            ns = 0
             while True:
                 try:
                     track_id = choose_track_id(tracks[i])
                 except KeyError:
                     i += 1
+                    if i >= len(tracks):
+                        i = 0
                     continue
-
-                cmd = self._play_track(track_id)
-
-                if cmd == 'f':
+                except StoredTrackError:
+                    ns += 1
                     i += 1
                     if i >= len(tracks):
                         i = 0
-                elif cmd == 'b':
-                    i -= 1
-                    if i < 0:
-                        i = len(tracks) - 1
-                elif cmd == 's':
-                    break
+
+                    warnings.warn('Track is not in the store.\n')
+                    if ns >= len(tracks):
+                        warnings.warn('All tracks are not in the store.\n')
+                        break
+                    else:
+                        continue
+                else:
+                    cmd = self._play_track(track_id)
+                    if cmd == 'f':
+                        i += 1
+                        if i >= len(tracks):
+                            i = 0
+                    elif cmd == 'b':
+                        i -= 1
+                        if i < 0:
+                            i = len(tracks) - 1
+                    elif cmd == 's':
+                        break
 
     def _play_track(self, track_id):
         self.prepare()
-        try:
-            info = self.api.get_track_info(track_id)
-        except CallFailure:
-            info = None
 
         try:
+            info = self.api.get_track_info(track_id)
             url = self.api.get_stream_url(track_id)
         except CallFailure as e:
             warnings.warn(str(e))

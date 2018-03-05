@@ -28,7 +28,10 @@ setup(
     url=about['__url__'],
     py_modules=['gpm_player'],
     entry_points={
-        'console_scripts': 'gpm-station = gpm_player.station:main'
+        'console_scripts': [
+            'gpm-station = gpm_player.station:main',
+            'gpm-playlist = gpm_player.playlist:main',
+        ]
     },
     keyword=['gmusicapi', 'music', 'music-player'],
     install_requires=install_requires,
