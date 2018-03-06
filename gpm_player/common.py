@@ -1,9 +1,11 @@
+import os
 import platform
 import argparse
 import subprocess
 import tempfile
 import warnings
 import getpass
+import random
 import urllib.request
 
 import vlc
@@ -33,6 +35,12 @@ def set_args():
                    help='screen display update interval')
     p.add_argument('-w', '--width', nargs='?', default=50, type=int,
                    help='progress bar width')
+    p.add_argument('-s', '--shuffle', action='store_true',
+                   help='shuffle tracks')
+    p.add_argument('-r', '--repeat', action='store_true',
+                   help='repeat tracks')
+    p.add_argument('-l', '--loop', action='store_true',
+                   help='loop a track')
     a = p.parse_args()
     return a
 
@@ -47,8 +55,9 @@ def run(player):
             return
 
         try:
-            p = player(email=email, password=password,
-                       interval=arg.interval, width=arg.width)
+            p = player(email=email, password=password, shuffle=arg.shuffle,
+                       width=arg.width, repeat=arg.repeat, loop=arg.loop,
+                       interval=arg.interval)
             p.start()
         except LoginFailure:
             continue
@@ -131,12 +140,30 @@ def choose_track_id(track):
     return track_id
 
 
+def loop_index(index, cmd, length):
+    if cmd == 'f':
+        index += 1
+    elif cmd == 'b':
+        index -= 1
+
+    if index >= length:
+        index = 0
+    elif index < 0:
+        index = length - 1
+
+    return index
+
+
 class BasePlayer(object):
-    def __init__(self, *, email=None, password=None, interval=3, width=50):
+    def __init__(self, *, email=None, password=None, interval=3, width=50,
+                 shuffle=True, repeat=True, loop=False):
         self.api = Mobileclient()
         self.vlc_media_player = vlc.MediaPlayer()
         self.interval = abs(interval)
         self.width = int(abs(width))
+        self.shuffle = shuffle
+        self.repeat = repeat
+        self.loop = loop
 
         if email is not None and password is not None:
             self._logged_in = False
@@ -167,8 +194,6 @@ class BasePlayer(object):
             self._run_player()
         except (KeyboardInterrupt, PlayerExitException):
             self.close()
-            self._tmp.close()
-            self.vlc_media_player.stop()
             print('\nGood bye')
         finally:
             return True
@@ -177,44 +202,43 @@ class BasePlayer(object):
         # This method returns list of tracks
         raise NotImplementedError
 
+    def _loop_index(self, index, cmd, length):
+        if self.repeat:
+            index = loop_index(index, cmd, length)
+        else:
+            index += 1
+
+        return index
+
     def _run_player(self):
 
         while True:
             tracks = self.get_tracks()
+            if self.shuffle:
+                random.shuffle(tracks)
             i = 0
             ns = 0
-            while True:
+            while i < len(tracks):
                 try:
                     track_id = choose_track_id(tracks[i])
                 except KeyError:
-                    i += 1
-                    if i >= len(tracks):
-                        i = 0
+                    i = self._loop_index(index=i, cmd='f', length=len(tracks))
                     continue
                 except StoredTrackError:
                     ns += 1
-                    i += 1
-                    if i >= len(tracks):
-                        i = 0
-
+                    i = loop_index(index=i, cmd='f', length=len(tracks))
                     warnings.warn('Track is not in the store.\n')
                     if ns >= len(tracks):
                         warnings.warn('All tracks are not in the store.\n')
                         break
                     else:
                         continue
-                else:
-                    cmd = self._play_track(track_id)
-                    if cmd == 'f':
-                        i += 1
-                        if i >= len(tracks):
-                            i = 0
-                    elif cmd == 'b':
-                        i -= 1
-                        if i < 0:
-                            i = len(tracks) - 1
-                    elif cmd == 's':
-                        break
+
+                cmd = self._play_track(track_id)
+                if cmd == 's':
+                    break
+
+                i = self._loop_index(index=i, cmd=cmd, length=len(tracks))
 
     def _play_track(self, track_id):
         self.prepare()
@@ -226,42 +250,55 @@ class BasePlayer(object):
             warnings.warn(str(e))
             return 'f'
 
-        self._tmp = tempfile.NamedTemporaryFile()
-        self._tmp.write(urllib.request.urlopen(url).read())
+        tmp = tempfile.NamedTemporaryFile(delete=False)
 
-        self.vlc_media_player.set_mrl(self._tmp.name)
-        self.vlc_media_player.play()
+        def close_player():
+            self.vlc_media_player.stop()
+            tmp.close()
+            os.remove(tmp.name)
 
-        paused = False
-        duration = int(info['durationMillis'])
+        try:
+            tmp.write(urllib.request.urlopen(url).read())
 
-        while True:
-            clear_screen()
-            print_track_info(info)
+            self.vlc_media_player.set_mrl(tmp.name)
+            self.vlc_media_player.play()
 
-            current = self.vlc_media_player.get_time()
-            remain = (duration - current) / 1000
-            timeout = min(remain, self.interval)
+            paused = False
+            duration = int(info['durationMillis'])
 
-            print_bar(current, duration, remain, self.width)
-            print_command_list()
+            while True:
+                clear_screen()
+                print_track_info(info)
 
-            if paused:
-                cmd = input('PAUSED\n>>')
-            else:
-                try:
-                    cmd = inputimeout(timeout=timeout, prompt='>>')
-                except TimeoutOccurred:
-                    if remain > self.interval:
-                        continue
-                    cmd = 'f'
+                current = self.vlc_media_player.get_time()
+                remain = (duration - current) / 1000
+                timeout = min(remain, self.interval)
 
-            if is_next(cmd):
-                self.vlc_media_player.stop()
-                self._tmp.close()
-                return cmd
-            elif is_quit(cmd):
-                raise PlayerExitException
-            elif cmd == 'p':
-                paused = not paused
-                self.vlc_media_player.pause()
+                print_bar(current, duration, remain, self.width)
+                print_command_list()
+
+                if paused:
+                    cmd = input('PAUSED\n>>')
+                else:
+                    try:
+                        cmd = inputimeout(timeout=timeout, prompt='>>')
+                    except TimeoutOccurred:
+                        if remain > self.interval:
+                            continue
+                        if self.loop:
+                            cmd = 'r'
+                        else:
+                            cmd = 'f'
+
+                if is_next(cmd):
+                    close_player()
+                    return cmd
+                elif is_quit(cmd):
+                    raise PlayerExitException
+                elif cmd == 'p':
+                    paused = not paused
+                    self.vlc_media_player.pause()
+
+        except BaseException:
+            close_player()
+            raise

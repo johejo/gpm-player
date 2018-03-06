@@ -37,7 +37,7 @@ Install
 
 .. code:: bash
 
-    $ pip install gpm-player
+    $ pip install -U gpm-player
 
 Usage
 -----
@@ -55,6 +55,11 @@ playlist player
 .. code:: bash
 
     $ gpm-playlist
+
+Options
+~~~~~~~
+
+try execute with --help option
 
 Tasks
 -----
