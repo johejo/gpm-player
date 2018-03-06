@@ -225,7 +225,7 @@ class BasePlayer(object):
             warnings.warn(str(e))
             return 'f'
 
-        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp = tempfile.NamedTemporaryFile()
         tmp.write(urllib.request.urlopen(url).read())
 
         self.vlc_media_player.set_mrl(tmp.name)
