@@ -167,8 +167,9 @@ class BasePlayer(object):
             self._run_player()
         except (KeyboardInterrupt, PlayerExitException):
             self.close()
+            self._tmp.close()
             self.vlc_media_player.stop()
-            print('Good bye')
+            print('\nGood bye')
         finally:
             return True
 
@@ -225,10 +226,10 @@ class BasePlayer(object):
             warnings.warn(str(e))
             return 'f'
 
-        tmp = tempfile.NamedTemporaryFile()
-        tmp.write(urllib.request.urlopen(url).read())
+        self._tmp = tempfile.NamedTemporaryFile()
+        self._tmp.write(urllib.request.urlopen(url).read())
 
-        self.vlc_media_player.set_mrl(tmp.name)
+        self.vlc_media_player.set_mrl(self._tmp.name)
         self.vlc_media_player.play()
 
         paused = False
@@ -257,10 +258,9 @@ class BasePlayer(object):
 
             if is_next(cmd):
                 self.vlc_media_player.stop()
-                tmp.close()
+                self._tmp.close()
                 return cmd
             elif is_quit(cmd):
-                tmp.close()
                 raise PlayerExitException
             elif cmd == 'p':
                 paused = not paused
