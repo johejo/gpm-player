@@ -75,18 +75,18 @@ def print_track_info(info):
 def print_command_list():
     print('Command List\n'
           '\'q\': stop and quit\n'
-          '\'p\': pause or run\n'
+          '\'p\': pause and resume\n'
           '\'f\': go to next track\n'
           '\'b\': back to previous track\n'
           '\'r\': restart current track\n'
-          '\'s\': back to selection menu\n')
+          '\'s\': back to menu\n')
 
 
 def print_bar(current, duration, remain, width=50):
     per = current / duration * 100
     bar = '█' * int(width * per / 100)
 
-    print('Remaining run time: {} [s]'.format(remain))
+    print('Remaining play time: {} [s]'.format(remain))
     print(' {}% |{}| {}/{} {}\n'
           .format(round(per, 2), bar.ljust(width),
                   round(current / 1000, 2), duration / 1000, '[s]'))
