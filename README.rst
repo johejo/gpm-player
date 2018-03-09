@@ -22,6 +22,10 @@ Description
 
 Multi platform command-line-player of Google Play Music using gmusicapi.
 
+.. image:: https://i.imgur.com/c3rWWQ9.png
+    :target: https://imgur.com/c3rWWQ9
+    :alt: screenshot
+
 Environment
 -----------
 
